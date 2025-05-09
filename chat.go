@@ -21,12 +21,40 @@ type ChatRequestParams struct {
 	ResponseFormat ResponseFormat `json:"response_format"`
 }
 
+type OcrParams struct {
+	IncludeImageBase64 bool `json:"include_image_base64"`
+}
+
 var DefaultChatRequestParams = ChatRequestParams{
 	Temperature: 1,
 	TopP:        1,
 	RandomSeed:  42069,
 	MaxTokens:   4000,
 	SafePrompt:  false,
+}
+
+type OcrDocument struct {
+	Pages     []Page       `json:"pages"`
+	Model     string       `json:"model"`
+	UsageInfo OcrUsageInfo `json:"usage_info"`
+}
+
+type Page struct {
+	Index      int        `json:"index"`
+	Markdown   string     `json:"markdown"`
+	Images     []string   `json:"images"`
+	Dimensions Dimensions `json:"dimensions"`
+}
+
+type OcrUsageInfo struct {
+	PagesProcessed int `json:"pages_processed"`
+	DocSizeBytes   int `json:"doc_size_bytes"`
+}
+
+type Dimensions struct {
+	DPI    int `json:"dpi"`
+	Height int `json:"height"`
+	Width  int `json:"width"`
 }
 
 // ChatCompletionResponseChoice represents a choice in the chat completion response.
@@ -113,6 +141,77 @@ func (c *MistralClient) Chat(model string, messages []ChatMessage, params *ChatR
 	}
 
 	return &chatResponse, nil
+}
+
+func (c *MistralClient) Vision(model string, messages []VisionMessage, params *ChatRequestParams) (*ChatCompletionResponse, error) {
+	if params == nil {
+		params = &DefaultChatRequestParams
+	}
+
+	requestData := map[string]interface{}{
+		"model":       model,
+		"messages":    messages,
+		"temperature": params.Temperature,
+		"max_tokens":  params.MaxTokens,
+		"top_p":       params.TopP,
+		"random_seed": params.RandomSeed,
+		"safe_prompt": params.SafePrompt,
+	}
+
+	if params.Tools != nil {
+		requestData["tools"] = params.Tools
+	}
+	if params.ToolChoice != "" {
+		requestData["tool_choice"] = params.ToolChoice
+	}
+	if params.ResponseFormat != "" {
+		requestData["response_format"] = map[string]any{"type": params.ResponseFormat}
+	}
+
+	response, err := c.request(http.MethodPost, requestData, "v1/chat/completions", false, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	respData, ok := response.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid response type: %T", response)
+	}
+
+	var chatResponse ChatCompletionResponse
+	err = mapToStruct(respData, &chatResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	return &chatResponse, nil
+}
+
+func (c *MistralClient) OCR(model string, document Document, params *OcrParams) (*OcrDocument, error) {
+
+	requestData := map[string]interface{}{
+		"model":                model,
+		"document":             document,
+		"include_image_base64": true,
+	}
+
+	response, err := c.request(http.MethodPost, requestData, "v1/ocr", false, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	respData, ok := response.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid response type: %T", response)
+	}
+
+	var resultDocument OcrDocument
+	err = mapToStruct(respData, &resultDocument)
+	if err != nil {
+		return nil, err
+	}
+
+	return &resultDocument, nil
 }
 
 // ChatStream sends a chat message and returns a channel to receive streaming responses.
