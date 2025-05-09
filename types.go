@@ -95,15 +95,21 @@ type ChatMessage struct {
 }
 
 type VisionMessage struct {
-	Role      string          `json:"role"`
-	Content   []VisionContent `json:"content"`
-	ToolCalls []ToolCall      `json:"tool_calls,omitempty"`
+	Role      string     `json:"role"`
+	Content   []Content  `json:"content"`
+	ToolCalls []ToolCall `json:"tool_calls,omitempty"`
 }
+
+type Content any
 
 type VisionContent struct {
 	Type     string `json:"type"`
-	Text     string `json:"text"`
 	ImageUrl string `json:"image_url"`
+}
+
+type TextContent struct {
+	Type string `json:"type"`
+	Text string `json:"text"`
 }
 
 type Document struct {
