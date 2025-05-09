@@ -30,7 +30,7 @@ package main
 import (
 	"log"
 
-	"github.com/gage-technologies/mistral-go"
+	"github.com/AuxData-ai/mistral-go"
 )
 
 func main() {
