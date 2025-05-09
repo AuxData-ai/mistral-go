@@ -17,7 +17,7 @@ To begin using the Mistral Go Client in your project, ensure you have Go install
 To install the Mistral Go Client, run the following command:
 
 ```bash
-go get github.com/gage-technologies/mistral-go
+go get github.com/AuxData-ai/mistral-go
 ```
 
 ### Usage
@@ -30,7 +30,7 @@ package main
 import (
 	"log"
 
-	"github.com/gage-technologies/mistral-go"
+	"github.com/AuxData-ai/mistral-go"
 )
 
 func main() {
