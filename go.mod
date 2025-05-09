@@ -1,4 +1,4 @@
-module github.com/gage-technologies/mistral-go
+module github.com/AuxData-ai/mistral-go
 
 go 1.20
 
