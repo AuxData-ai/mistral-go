@@ -10,7 +10,7 @@ The Mistral Go Client is a comprehensive Golang library designed to interface wi
 - **Chat Completions Streaming**: Establish a real-time stream of chat completions, ideal for applications requiring continuous interaction.
 - **Embeddings**: Obtain numerical vector representations of text, enabling semantic search, clustering, and other machine learning applications.
 - **Vision**: Vision capabilities for mulit modal models like pixtral
-- **OCR**: OCR capabilities for mistral ocr models (samples coming soon)
+- **OCR**: OCR capabilities for mistral ocr models
 
 ## Getting Started
 
