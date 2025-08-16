@@ -214,6 +214,33 @@ func (c *MistralClient) OCR(model string, document Document, params *OcrParams) 
 	return &resultDocument, nil
 }
 
+func (c *MistralClient) OCRImage(model string, document DocumentImage, params *OcrParams) (*OcrDocument, error) {
+
+	requestData := map[string]interface{}{
+		"model":                model,
+		"document":             document,
+		"include_image_base64": true,
+	}
+
+	response, err := c.request(http.MethodPost, requestData, "v1/ocr", false, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	respData, ok := response.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid response type: %T", response)
+	}
+
+	var resultDocument OcrDocument
+	err = mapToStruct(respData, &resultDocument)
+	if err != nil {
+		return nil, err
+	}
+
+	return &resultDocument, nil
+}
+
 // ChatStream sends a chat message and returns a channel to receive streaming responses.
 func (c *MistralClient) ChatStream(model string, messages []ChatMessage, params *ChatRequestParams) (<-chan ChatCompletionStreamResponse, error) {
 	if params == nil {
