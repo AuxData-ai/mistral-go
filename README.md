@@ -2,6 +2,8 @@
 
 This project is a fork from [Gage-Technologies/mistral-go](https://github.com/Gage-Technologies/mistral-go)
 
+The difference to the original repository is, that we added support for computer vision and ocr. So we can use the complete power of mistral models.
+
 The Mistral Go Client is a comprehensive Golang library designed to interface with the Mistral AI API, providing developers with a robust set of tools to integrate advanced AI-powered features into their applications. This client supports a variety of functionalities, including Chat Completions, Chat Completions Streaming, and Embeddings, allowing for seamless interaction with Mistral's powerful language models.
 
 ## Features
