@@ -125,6 +125,37 @@ func main() {
 
 	return result, err
 ```
+### OCR samples
+
+#### PDF as base64
+```go
+	var resultDocument *mistral.OcrDocument
+	var err error
+	var document mistral.Document
+	client := mistral.NewMistralClientDefault("your-api-key")
+	document.Type = "document_url"
+	document.DocumentUrl = "data:application/pdf;base64,**<base64-string>**"
+	resultDocument, err = client.OCR(llm.Model, document, &params)
+
+	for _, page := range resultDocument.Pages {
+		textOfPage := page.Markdown
+	}
+```
+
+#### Image as base64
+```go
+	var resultDocument *mistral.OcrDocument
+	var err error
+	client := mistral.NewMistralClientDefault("your-api-key")
+	var document mistral.VisionContent
+	document.Type = "image_url"
+	document.ImageUrl = filecontent
+	resultDocument, err = client.OCRImage(llm.Model, document, &params)
+
+	for _, page := range resultDocument.Pages {
+		textOfPage := page.Markdown
+	}
+```
 
 ## Documentation
 
