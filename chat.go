@@ -214,7 +214,7 @@ func (c *MistralClient) OCR(model string, document Document, params *OcrParams) 
 	return &resultDocument, nil
 }
 
-func (c *MistralClient) OCRImage(model string, document DocumentImage, params *OcrParams) (*OcrDocument, error) {
+func (c *MistralClient) OCRImage(model string, document VisionContent, params *OcrParams) (*OcrDocument, error) {
 
 	requestData := map[string]interface{}{
 		"model":                model,

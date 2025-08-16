@@ -116,8 +116,3 @@ type Document struct {
 	Type        string `json:"type"`
 	DocumentUrl string `json:"document_url"`
 }
-
-type DocumentImage struct {
-	Type     string `json:"type"`
-	ImageUrl string `json:"image_url"`
-}
