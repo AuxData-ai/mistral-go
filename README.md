@@ -9,7 +9,7 @@ The Mistral Go Client is a comprehensive Golang library designed to interface wi
 - **Chat Completions**: Generate conversational responses and complete dialogue prompts using Mistral's language models.
 - **Chat Completions Streaming**: Establish a real-time stream of chat completions, ideal for applications requiring continuous interaction.
 - **Embeddings**: Obtain numerical vector representations of text, enabling semantic search, clustering, and other machine learning applications.
-- **Vision**: Vision capabilities for pixtral models (samples coming soon)
+- **Vision**: Vision capabilities for mulit modal models like pixtral
 - **OCR**: OCR capabilities for mistral ocr models (samples coming soon)
 
 ## Getting Started
@@ -68,6 +68,39 @@ func main() {
 	}
 
 	log.Printf("Embeddings response: %+v\n", embsRes)
+
+	// Example: Using vision
+	params := mistral.DefaultChatRequestParams
+	var messages []mistral.VisionMessage
+	var contentParts []mistral.Content
+	
+	prompt := mistral.TextContent{
+		Type: "text",
+		Text: "Extrahiere den Text und die Informationen aus dem Bild. Falls Du keinen Text auf dem Bild findest beschreibe was Du auf dem Bild siehst.",
+	}
+	contentParts = append(contentParts, prompt)
+	image := mistral.VisionContent{
+		Type:     "image_url",
+		ImageUrl: "base64 string",
+	}
+	contentParts = append(contentParts, image)
+	request := mistral.VisionMessage{
+		Role:    "user",
+		Content: contentParts,
+	}
+	
+	messages = append(messages, request)
+	var chatRes *mistral.ChatCompletionResponse
+	model := "pixtral-12b-latest"
+	chatRes, err := client.Vision(model, messages, &params)
+	
+	if err != nil {
+		log.Println(err)
+		result.Result = err.Error()
+		return result, err
+	}
+	
+	result := chatRes.Choices[0].Message.Content
 }
 ```
 
