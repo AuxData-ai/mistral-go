@@ -42,8 +42,17 @@ type OcrDocument struct {
 type Page struct {
 	Index      int        `json:"index"`
 	Markdown   string     `json:"markdown"`
-	Images     []string   `json:"images"`
+	Images     []Image    `json:"images"`
 	Dimensions Dimensions `json:"dimensions"`
+}
+
+type Image struct {
+	Id           string  `json:"id"`
+	TopLeftX     float64 `json:"top_left_x"`
+	TopLeftY     float64 `json:"top_left_y"`
+	BottomRightX float64 `json:"bottom_right_x"`
+	BottomRightY float64 `json:"bottom_right_y"`
+	ImageBase64  string  `json:"image_base64"`
 }
 
 type OcrUsageInfo struct {
