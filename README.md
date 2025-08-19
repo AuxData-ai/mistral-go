@@ -2,6 +2,8 @@
 
 This project is a fork from [Gage-Technologies/mistral-go](https://github.com/Gage-Technologies/mistral-go)
 
+The difference to the original repository is, that we added support for computer vision and ocr. So we can use the complete power of mistral models.
+
 The Mistral Go Client is a comprehensive Golang library designed to interface with the Mistral AI API, providing developers with a robust set of tools to integrate advanced AI-powered features into their applications. This client supports a variety of functionalities, including Chat Completions, Chat Completions Streaming, and Embeddings, allowing for seamless interaction with Mistral's powerful language models.
 
 ## Features
@@ -10,7 +12,7 @@ The Mistral Go Client is a comprehensive Golang library designed to interface wi
 - **Chat Completions Streaming**: Establish a real-time stream of chat completions, ideal for applications requiring continuous interaction.
 - **Embeddings**: Obtain numerical vector representations of text, enabling semantic search, clustering, and other machine learning applications.
 - **Vision**: Vision capabilities for mulit modal models like pixtral
-- **OCR**: OCR capabilities for mistral ocr models (samples coming soon)
+- **OCR**: OCR capabilities for mistral ocr models
 
 ## Getting Started
 
@@ -124,6 +126,37 @@ func main() {
 	}
 
 	return result, err
+```
+### OCR samples
+
+#### PDF as base64
+```go
+	var resultDocument *mistral.OcrDocument
+	var err error
+	var document mistral.Document
+	client := mistral.NewMistralClientDefault("your-api-key")
+	document.Type = "document_url"
+	document.DocumentUrl = "data:application/pdf;base64,**<base64-string>**"
+	resultDocument, err = client.OCR(llm.Model, document, &params)
+
+	for _, page := range resultDocument.Pages {
+		textOfPage := page.Markdown
+	}
+```
+
+#### Image as base64
+```go
+	var resultDocument *mistral.OcrDocument
+	var err error
+	client := mistral.NewMistralClientDefault("your-api-key")
+	var document mistral.VisionContent
+	document.Type = "image_url"
+	document.ImageUrl = filecontent
+	resultDocument, err = client.OCRImage(llm.Model, document, &params)
+
+	for _, page := range resultDocument.Pages {
+		textOfPage := page.Markdown
+	}
 ```
 
 ## Documentation
