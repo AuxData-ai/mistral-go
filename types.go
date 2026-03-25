@@ -1,5 +1,12 @@
 package mistral
 
+// Voxtral transcription model constants
+const (
+	ModelVoxtralMiniLatest   = "voxtral-mini-latest"
+	ModelVoxtralMini2602     = "voxtral-mini-2602"
+	ModelVoxtralMiniRealtime = "voxtral-mini-transcribe-realtime-2602"
+)
+
 const (
 	ModelMistralLargeLatest  = "mistral-large-latest"
 	ModelMistralMediumLatest = "mistral-medium-latest"

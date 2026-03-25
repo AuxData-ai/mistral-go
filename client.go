@@ -73,6 +73,53 @@ func NewCodestralClientDefault(apiKey string) *MistralClient {
 	return NewMistralClient(apiKey, CodestralEndpoint, DefaultMaxRetries, DefaultTimeout)
 }
 
+// requestMultipart sends a multipart/form-data POST request.
+// When stream is true it returns the raw io.ReadCloser body for SSE consumption;
+// otherwise it parses the response as JSON and returns a map[string]interface{}.
+// Note: multipart bodies cannot be replayed, so retries are not performed.
+func (c *MistralClient) requestMultipart(body *bytes.Buffer, contentType string, path string, stream bool) (interface{}, error) {
+	uri, err := url.Parse(c.endpoint)
+	if err != nil {
+		return nil, err
+	}
+	uri.Path = path
+
+	req, err := http.NewRequest(http.MethodPost, uri.String(), body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	req.Header.Set("Content-Type", contentType)
+
+	client := &http.Client{Timeout: c.timeout}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode >= 400 {
+		defer resp.Body.Close()
+		responseBytes, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("(HTTP Error %d) %s", resp.StatusCode, string(responseBytes))
+	}
+
+	if stream {
+		return resp.Body, nil
+	}
+
+	defer resp.Body.Close()
+	respBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var result map[string]interface{}
+	if err = json.Unmarshal(respBytes, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 func (c *MistralClient) request(method string, jsonData map[string]interface{}, path string, stream bool, params map[string]string) (interface{}, error) {
 	uri, err := url.Parse(c.endpoint)
 	if err != nil {
