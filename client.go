@@ -126,6 +126,13 @@ func (c *MistralClient) request(method string, jsonData map[string]interface{}, 
 		return nil, err
 	}
 	uri.Path = path
+	if len(params) > 0 {
+		query := uri.Query()
+		for key, value := range params {
+			query.Set(key, value)
+		}
+		uri.RawQuery = query.Encode()
+	}
 	jsonValue, _ := json.Marshal(jsonData)
 	req, err := http.NewRequest(method, uri.String(), bytes.NewBuffer(jsonValue))
 	if err != nil {
