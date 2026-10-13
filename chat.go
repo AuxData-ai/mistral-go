@@ -19,6 +19,8 @@ type ChatRequestParams struct {
 	Tools          []Tool         `json:"tools"`
 	ToolChoice     string         `json:"tool_choice"`
 	ResponseFormat ResponseFormat `json:"response_format"`
+	// ReasoningEffort controls the thinking of reasoning models (none, low, medium, high, max); empty = not sent.
+	ReasoningEffort string `json:"reasoning_effort,omitempty"`
 }
 
 type OcrParams struct {
@@ -132,6 +134,9 @@ func (c *MistralClient) Chat(model string, messages []ChatMessage, params *ChatR
 	if params.ResponseFormat != "" {
 		requestData["response_format"] = map[string]any{"type": params.ResponseFormat}
 	}
+	if params.ReasoningEffort != "" {
+		requestData["reasoning_effort"] = params.ReasoningEffort
+	}
 
 	response, err := c.request(http.MethodPost, requestData, "v1/chat/completions", false, nil)
 	if err != nil {
@@ -175,6 +180,9 @@ func (c *MistralClient) Vision(model string, messages []VisionMessage, params *C
 	}
 	if params.ResponseFormat != "" {
 		requestData["response_format"] = map[string]any{"type": params.ResponseFormat}
+	}
+	if params.ReasoningEffort != "" {
+		requestData["reasoning_effort"] = params.ReasoningEffort
 	}
 
 	response, err := c.request(http.MethodPost, requestData, "v1/chat/completions", false, nil)
@@ -277,6 +285,9 @@ func (c *MistralClient) ChatStream(model string, messages []ChatMessage, params 
 	}
 	if params.ResponseFormat != "" {
 		requestData["response_format"] = map[string]any{"type": params.ResponseFormat}
+	}
+	if params.ReasoningEffort != "" {
+		requestData["reasoning_effort"] = params.ReasoningEffort
 	}
 
 	response, err := c.request(http.MethodPost, requestData, "v1/chat/completions", true, nil)
