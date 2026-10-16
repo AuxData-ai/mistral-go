@@ -1,9 +1,14 @@
 package mistral
 
 import (
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestChat(t *testing.T) {
@@ -374,4 +379,84 @@ func TestChatStreamJsonMode(t *testing.T) {
 
 	assert.Equal(t, totalOutput, "{\"symbols\": [\"Go\", \"ChatMessage\", \"Any\", \"FunctionCall\", \"ToolCall\", \"ToolResponse\"]}")
 	assert.Nil(t, functionCall)
+}
+
+// promptCacheKeyServer answers every chat request with a minimal completion and records the decoded bodies.
+func promptCacheKeyServer(t *testing.T, bodies *[]map[string]interface{}) *httptest.Server {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]interface{}
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &body)
+		*bodies = append(*bodies, body)
+		if body["stream"] == true {
+			w.Header().Set("Content-Type", "text/event-stream")
+			_, _ = w.Write([]byte("data: {\"id\":\"x\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"ok\"},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n"))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"x","object":"chat.completion","choices":[{"index":0,"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}]}`))
+	}))
+	t.Cleanup(server.Close)
+	return server
+}
+
+// Sends Chat, Vision and ChatStream with and without PromptCacheKey and checks prompt_cache_key in the body.
+// Exists because Mistral caches only with the key, while requests without it must stay byte-identical to before.
+func TestChatRequests_SendPromptCacheKeyOnlyWhenSet(t *testing.T) {
+	calls := map[string]func(c *MistralClient, params *ChatRequestParams) error{
+		"chat": func(c *MistralClient, params *ChatRequestParams) error {
+			_, err := c.Chat("m", []ChatMessage{{Role: RoleUser, Content: "Hi"}}, params)
+			return err
+		},
+		"vision": func(c *MistralClient, params *ChatRequestParams) error {
+			_, err := c.Vision("m", []VisionMessage{{Role: RoleUser, Content: []Content{TextContent{Type: "text", Text: "Hi"}}}}, params)
+			return err
+		},
+		"stream": func(c *MistralClient, params *ChatRequestParams) error {
+			ch, err := c.ChatStream("m", []ChatMessage{{Role: RoleUser, Content: "Hi"}}, params)
+			if err != nil {
+				return err
+			}
+			for range ch {
+			}
+			return nil
+		},
+	}
+	for name, call := range calls {
+		t.Run(name, func(t *testing.T) {
+			var bodies []map[string]interface{}
+			client := testClient(promptCacheKeyServer(t, &bodies).URL)
+
+			withKey := DefaultChatRequestParams
+			withKey.PromptCacheKey = "agent-1-chat-abc"
+			require.NoError(t, call(client, &withKey))
+			withoutKey := DefaultChatRequestParams
+			require.NoError(t, call(client, &withoutKey))
+
+			require.Len(t, bodies, 2)
+			assert.Equal(t, "agent-1-chat-abc", bodies[0]["prompt_cache_key"])
+			_, present := bodies[1]["prompt_cache_key"]
+			assert.False(t, present, "prompt_cache_key must be omitted when empty")
+		})
+	}
+}
+
+// Reads usage.prompt_tokens_details.cached_tokens from a chat answer and a stream usage chunk; without details the pointer stays nil.
+// Exists because Mistral reports its prompt cache hits only there and callers book them as cache reads.
+func TestChatUsage_ReadsCachedTokens(t *testing.T) {
+	var resp ChatCompletionResponse
+	require.NoError(t, json.Unmarshal([]byte(`{"usage":{"prompt_tokens":1000,"completion_tokens":40,"total_tokens":1040,"prompt_tokens_details":{"cached_tokens":768}}}`), &resp))
+	require.NotNil(t, resp.Usage.PromptTokensDetails)
+	assert.Equal(t, 768, resp.Usage.PromptTokensDetails.CachedTokens)
+
+	var chunk ChatCompletionStreamResponse
+	require.NoError(t, json.Unmarshal([]byte(`{"id":"x","choices":[],"usage":{"prompt_tokens":10,"completion_tokens":2,"total_tokens":12,"prompt_tokens_details":{"cached_tokens":4}}}`), &chunk))
+	require.NotNil(t, chunk.Usage.PromptTokensDetails)
+	assert.Equal(t, 4, chunk.Usage.PromptTokensDetails.CachedTokens)
+
+	var plain ChatCompletionResponse
+	require.NoError(t, json.Unmarshal([]byte(`{"usage":{"prompt_tokens":11,"completion_tokens":7,"total_tokens":18}}`), &plain))
+	assert.Nil(t, plain.Usage.PromptTokensDetails)
+	assert.Equal(t, 11, plain.Usage.PromptTokens)
 }

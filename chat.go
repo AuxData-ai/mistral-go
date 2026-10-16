@@ -21,6 +21,8 @@ type ChatRequestParams struct {
 	ResponseFormat ResponseFormat `json:"response_format"`
 	// ReasoningEffort controls the thinking of reasoning models (none, low, medium, high, max); empty = not sent.
 	ReasoningEffort string `json:"reasoning_effort,omitempty"`
+	// PromptCacheKey opts the request into Mistral's prompt cache (requests sharing a key share a cache); empty = not sent.
+	PromptCacheKey string `json:"prompt_cache_key,omitempty"`
 }
 
 type OcrParams struct {
@@ -108,6 +110,13 @@ type UsageInfo struct {
 	PromptTokens     int `json:"prompt_tokens"`
 	TotalTokens      int `json:"total_tokens"`
 	CompletionTokens int `json:"completion_tokens,omitempty"`
+	// PromptTokensDetails carries the prompt cache hits; nil when the response has no details.
+	PromptTokensDetails *PromptTokensDetails `json:"prompt_tokens_details,omitempty"`
+}
+
+// PromptTokensDetails breaks down the prompt tokens; CachedTokens is the share read from the prompt cache.
+type PromptTokensDetails struct {
+	CachedTokens int `json:"cached_tokens"`
 }
 
 func (c *MistralClient) Chat(model string, messages []ChatMessage, params *ChatRequestParams) (*ChatCompletionResponse, error) {
@@ -136,6 +145,9 @@ func (c *MistralClient) Chat(model string, messages []ChatMessage, params *ChatR
 	}
 	if params.ReasoningEffort != "" {
 		requestData["reasoning_effort"] = params.ReasoningEffort
+	}
+	if params.PromptCacheKey != "" {
+		requestData["prompt_cache_key"] = params.PromptCacheKey
 	}
 
 	response, err := c.request(http.MethodPost, requestData, "v1/chat/completions", false, nil)
@@ -183,6 +195,9 @@ func (c *MistralClient) Vision(model string, messages []VisionMessage, params *C
 	}
 	if params.ReasoningEffort != "" {
 		requestData["reasoning_effort"] = params.ReasoningEffort
+	}
+	if params.PromptCacheKey != "" {
+		requestData["prompt_cache_key"] = params.PromptCacheKey
 	}
 
 	response, err := c.request(http.MethodPost, requestData, "v1/chat/completions", false, nil)
@@ -288,6 +303,9 @@ func (c *MistralClient) ChatStream(model string, messages []ChatMessage, params 
 	}
 	if params.ReasoningEffort != "" {
 		requestData["reasoning_effort"] = params.ReasoningEffort
+	}
+	if params.PromptCacheKey != "" {
+		requestData["prompt_cache_key"] = params.PromptCacheKey
 	}
 
 	response, err := c.request(http.MethodPost, requestData, "v1/chat/completions", true, nil)
