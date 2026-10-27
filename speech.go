@@ -3,6 +3,7 @@ package mistral
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 )
 
 const (
@@ -109,27 +110,48 @@ func (c *MistralClient) Speech(model string, input string, params *SpeechRequest
 	return &result, nil
 }
 
+// voiceListPageSize is the page size requested from the voices endpoint. The
+// API defaults to 10, which hides custom voices behind the preset catalog.
+const voiceListPageSize = 100
+
 // ListVoices returns the voices available to the API key. voiceType is one of
 // VoiceTypeAll, VoiceTypePreset or VoiceTypeCustom; empty defaults to all.
+//
+// The endpoint is paginated; ListVoices follows the pages via offset until
+// total is reached or a page comes back empty.
 func (c *MistralClient) ListVoices(voiceType string) ([]Voice, error) {
 	if voiceType == "" {
 		voiceType = VoiceTypeAll
 	}
 
-	response, err := c.request(http.MethodGet, nil, "v1/audio/voices", false, map[string]string{"type": voiceType})
-	if err != nil {
-		return nil, err
-	}
+	voices := []Voice{}
 
-	respData, ok := response.(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("invalid response type: %T", response)
-	}
+	for {
+		params := map[string]string{
+			"type":   voiceType,
+			"limit":  strconv.Itoa(voiceListPageSize),
+			"offset": strconv.Itoa(len(voices)),
+		}
 
-	var list voiceList
-	if err = mapToStruct(respData, &list); err != nil {
-		return nil, err
-	}
+		response, err := c.request(http.MethodGet, nil, "v1/audio/voices", false, params)
+		if err != nil {
+			return nil, err
+		}
 
-	return list.Items, nil
+		respData, ok := response.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("invalid response type: %T", response)
+		}
+
+		var list voiceList
+		if err = mapToStruct(respData, &list); err != nil {
+			return nil, err
+		}
+
+		voices = append(voices, list.Items...)
+
+		if len(list.Items) == 0 || len(voices) >= list.Total {
+			return voices, nil
+		}
+	}
 }

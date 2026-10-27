@@ -2,9 +2,12 @@ package mistral
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -107,6 +110,59 @@ func TestListVoices_SendsTypeQueryAndParsesItems(t *testing.T) {
 	assert.Equal(t, "Amelie", voices[0].Name)
 	assert.Equal(t, []string{"fr"}, voices[0].Languages)
 	assert.Equal(t, "Oliver", voices[1].Name)
+}
+
+// The voices endpoint is paginated (default page size 10). A custom voice can
+// sit behind dozens of presets, so ListVoices must follow every page.
+func TestListVoices_FollowsAllPages(t *testing.T) {
+	const total = 25
+	const pageSize = 10
+	var requests int
+	var gotLimit string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		gotLimit = r.URL.Query().Get("limit")
+		offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+
+		items := []string{}
+		for i := offset; i < total && i < offset+pageSize; i++ {
+			items = append(items, fmt.Sprintf(`{"id":"v%d","name":"Voice %d"}`, i, i))
+		}
+		_, _ = fmt.Fprintf(w, `{"items":[%s],"total":%d}`, strings.Join(items, ","), total)
+	}))
+	defer server.Close()
+
+	voices, err := testClient(server.URL).ListVoices("")
+
+	require.NoError(t, err)
+	require.Len(t, voices, total)
+	assert.Equal(t, "v0", voices[0].Id)
+	assert.Equal(t, "v24", voices[total-1].Id)
+	assert.Equal(t, 3, requests)
+	assert.Equal(t, "100", gotLimit)
+}
+
+// A page without items ends the loop even if total claims more, so a
+// misbehaving server cannot make ListVoices spin forever.
+func TestListVoices_StopsOnEmptyPage(t *testing.T) {
+	var requests int
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		if r.URL.Query().Get("offset") == "0" {
+			_, _ = w.Write([]byte(`{"items":[{"id":"v0"}],"total":50}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"items":[],"total":50}`))
+	}))
+	defer server.Close()
+
+	voices, err := testClient(server.URL).ListVoices("")
+
+	require.NoError(t, err)
+	require.Len(t, voices, 1)
+	assert.Equal(t, 2, requests)
 }
 
 func TestListVoices_PassesExplicitType(t *testing.T) {
