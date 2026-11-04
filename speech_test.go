@@ -112,6 +112,27 @@ func TestListVoices_SendsTypeQueryAndParsesItems(t *testing.T) {
 	assert.Equal(t, "Oliver", voices[1].Name)
 }
 
+// voxtral-mini-tts-2603 ("speech v1") only accepts voices of kind "ivc", so a
+// caller needs kind and type to tell usable voices from newer presets.
+func TestListVoices_ParsesKindAndType(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"items":[
+			{"id":"v1","name":"Heidi","kind":"pvc","type":"preset"},
+			{"id":"v2","name":"Auxy","kind":"ivc","type":"custom"}
+		],"total":2}`))
+	}))
+	defer server.Close()
+
+	voices, err := testClient(server.URL).ListVoices("")
+
+	require.NoError(t, err)
+	require.Len(t, voices, 2)
+	assert.Equal(t, "pvc", voices[0].Kind)
+	assert.Equal(t, "preset", voices[0].Type)
+	assert.Equal(t, "ivc", voices[1].Kind)
+	assert.Equal(t, "custom", voices[1].Type)
+}
+
 // The voices endpoint is paginated (default page size 10). A custom voice can
 // sit behind dozens of presets, so ListVoices must follow every page.
 func TestListVoices_FollowsAllPages(t *testing.T) {

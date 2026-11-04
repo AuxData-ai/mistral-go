@@ -47,6 +47,11 @@ type Voice struct {
 	Description string   `json:"description"`
 	Gender      string   `json:"gender"`
 	Languages   []string `json:"languages"`
+	// Kind is the voice generation, e.g. "ivc" or "pvc". Not every speech model
+	// accepts every kind: voxtral-mini-tts-2603 rejects "pvc" with error 3051.
+	Kind string `json:"kind"`
+	// Type is the origin of the voice, e.g. "preset" or "custom".
+	Type string `json:"type"`
 }
 
 // voiceList is the paginated envelope the voices endpoint returns.
